@@ -1,0 +1,25 @@
+DATA:
+1. Sentiment 140 Data
+	only has sentence level sentiment label
+2. SemEval 2013 from york.ac.uk
+	combine task a and task b to provide some phrasal sentiment to use RecursiveNN
+
+Possible RNN models:
+
+RNN 1 baseline
+RNN 2
+RNN 2 with dropout
+RNTN 
+think about what improvement you can bring to the RNN2 model
+
+Use:
+Preprocess Twitter data
+Glove pretrained word vectors?
+
+
+TODO:
+combine data to the form of hw3
+
+
+Installing jpype:
+export JAVA_HOME="/usr/lib/jvm/java-1.6.0-openjdk-1.6.0.0.x86_64/"
