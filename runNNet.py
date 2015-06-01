@@ -57,6 +57,8 @@ def run(args=None):
 
     parser.add_option("--model",dest="model",type="string",default="RNN")
 
+    parser.add_option("--pretrain",dest="pretrain",default=False)
+    parser.add_option("--dropout",dest="dropout",default=False)
     (opts,args)=parser.parse_args(args)
 
 
@@ -76,15 +78,15 @@ def run(args=None):
     opts.numWords = len(tr.loadWordMap())
 
     if (opts.model=='RNTN'):
-        nn = RNTN(opts.wvecDim,opts.outputDim,opts.numWords,opts.minibatch)
+        nn = RNTN(opts.wvecDim,opts.outputDim,opts.numWords,opts.minibatch,opts.pretrain)
     elif(opts.model=='RNN'):
-        nn = RNN(opts.wvecDim,opts.outputDim,opts.numWords,opts.minibatch)
+        nn = RNN(opts.wvecDim,opts.outputDim,opts.numWords,opts.minibatch,opts.pretrain)
     elif(opts.model=='RNN2'):
-        nn = RNN2(opts.wvecDim,opts.middleDim,opts.outputDim,opts.numWords,opts.minibatch)
+        nn = RNN2(opts.wvecDim,opts.middleDim,opts.outputDim,opts.numWords,opts.minibatch,opts.pretrain)
     elif(opts.model=='RNN2TANH'):
-        nn = RNN2(opts.wvecDim,opts.middleDim,opts.outputDim,opts.numWords,opts.minibatch)
+        nn = RNN2(opts.wvecDim,opts.middleDim,opts.outputDim,opts.numWords,opts.minibatch,opts.pretrain)
     elif(opts.model=='RNN3'):
-        nn = RNN3(opts.wvecDim,opts.middleDim,opts.outputDim,opts.numWords,opts.minibatch)
+        nn = RNN3(opts.wvecDim,opts.middleDim,opts.outputDim,opts.numWords,opts.minibatch,opts.pretrain)
     elif(opts.model=='DCNN'):
         nn = DCNN(opts.wvecDim,opts.ktop,opts.m1,opts.m2, opts.n1, opts.n2,0, opts.outputDim,opts.numWords, 2, opts.minibatch,rho=1e-4)
         trees = cnn.tree2matrix(trees)
@@ -140,15 +142,15 @@ def test(netFile,dataSet, model='RNN', trees=None):
         _ = pickle.load(fid)
         
         if (model=='RNTN'):
-            nn = RNTN(opts.wvecDim,opts.outputDim,opts.numWords,opts.minibatch)
+            nn = RNTN(opts.wvecDim,opts.outputDim,opts.numWords,opts.minibatch,opts.pretrain)
         elif(model=='RNN'):
-            nn = RNN(opts.wvecDim,opts.outputDim,opts.numWords,opts.minibatch)
+            nn = RNN(opts.wvecDim,opts.outputDim,opts.numWords,opts.minibatch,opts.pretrain)
         elif(model=='RNN2'):
-            nn = RNN2(opts.wvecDim,opts.middleDim,opts.outputDim,opts.numWords,opts.minibatch)
+            nn = RNN2(opts.wvecDim,opts.middleDim,opts.outputDim,opts.numWords,opts.minibatch,opts.pretrain)
         elif(model=='RNN2TANH'):
-            nn = RNN2TANH(opts.wvecDim,opts.middleDim,opts.outputDim,opts.numWords,opts.minibatch)
+            nn = RNN2TANH(opts.wvecDim,opts.middleDim,opts.outputDim,opts.numWords,opts.minibatch,opts.pretrain)
         elif(model=='RNN3'):
-            nn = RNN3(opts.wvecDim,opts.middleDim,opts.outputDim,opts.numWords,opts.minibatch)
+            nn = RNN3(opts.wvecDim,opts.middleDim,opts.outputDim,opts.numWords,opts.minibatch,opts.pretrain)
         elif(model=='DCNN'):
             nn = DCNN(opts.wvecDim,opts.ktop,opts.m1,opts.m2, opts.n1, opts.n2,0, opts.outputDim,opts.numWords, 2, opts.minibatch,rho=1e-4)
             trees = cnn.tree2matrix(trees)

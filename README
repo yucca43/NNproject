@@ -34,12 +34,14 @@ Done:
 
 4. Run rntn.. struggling...
 
+5. load pretrain data
 
 Possible further improvement
 -preprocess twitter data & use pretrained word vectors
 Question: preprocess before parsing or after parsing?
 -incorporate task A data
 -Run it on sentiment140?
+-take those word not in pretrained as UNK?
 
 
 Everytime you get new train/dev trees:

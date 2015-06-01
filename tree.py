@@ -153,18 +153,33 @@ def loadTrees(dataSet='train'):
         leftTraverse(tree.root,nodeFn=mapWords,args=wordMap)
     return trees
   
-def buildPretrainWV(dataSet='train'):
+def buildPretrainWV(wvecDim=25):
     """
     Loads training trees. Maps leaf node words to word ids.
     """
+    import cPickle as pickle
+    import numpy as np
     wordMap = loadWordMap()
-    file = 'trees/%s.txt'%dataSet
-    print "Loading %sing trees.."%dataSet
-    with open(file,'r') as fid:
-        trees = [Tree(l) for l in fid.readlines()]
-    for tree in trees:
-        leftTraverse(tree.root,nodeFn=mapWords,args=wordMap)
-    return trees
+    filename = 'wordvectors/glove.twitter.27B.'+str(wvecDim)+'d.txt'
+    pretrainVectors = np.loadtxt(filename,usecols=range(1,26))
+    pretrainWords = np.loadtxt(filename,usecols=(0,),dtype='str')
+    pertrainWordDict = { word:i for i,word in enumerate(pretrainWords)}
+    numWords = len(wordMap)
+    L = 0.01*np.random.randn(wvecDim,numWords)
+    miss = []
+    for word in wordMap:
+        if word in pertrainWordDict:
+            WVindex = pertrainWordDict[word]
+            L[:,wordMap[word]] = pretrainVectors[WVindex]
+        else:
+            miss.append(word)
+
+    print "Missed ",len(miss)
+            
+    print "Saving wordvectors to wordvectors.bin"
+    with open('wordvectors/wordvectors.'+str(wvecDim)+'d.bin','w') as fid:
+        pickle.dump(L,fid)
+
 
 if __name__=='__main__':
     buildWordMap()

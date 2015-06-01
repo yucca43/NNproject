@@ -5,19 +5,26 @@ np.seterr(over='raise',under='raise')
 
 class RNTN:
 
-    def __init__(self,wvecDim,outputDim,numWords,mbSize=30,rho=1e-6):
+    def __init__(self,wvecDim,outputDim,numWords,mbSize=30,pretrain=False,rho=1e-6):
         self.wvecDim = wvecDim
         self.outputDim = outputDim
         self.numWords = numWords
         self.mbSize = mbSize
         self.defaultVec = lambda : np.zeros((wvecDim,))
         self.rho = rho
+        self.pretrain = pretrain
 
     def initParams(self):
         np.random.seed(12341)
         
         # Word vectors
-        self.L = 0.01*np.random.randn(self.wvecDim,self.numWords)
+        if self.pretrain:
+            import cPickle as pickle
+            with open('wordvectors/wordvectors.'+str(self.wvecDim)+'d.bin','r') as fid:
+                print "Loading from pretrained wordvectors"
+                self.L = pickle.load(fid)
+        else:       
+            self.L = 0.01*np.random.randn(self.wvecDim,self.numWords)
 
         # Hidden activation weights
         self.V = 0.01*np.random.randn(self.wvecDim,2*self.wvecDim,2*self.wvecDim)

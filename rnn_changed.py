@@ -19,7 +19,13 @@ class RNN3:
         np.random.seed(12341)
 
         # Word vectors
-        self.L = 0.01*np.random.randn(self.wvecDim,self.numWords)
+        if self.pretrain:
+            import cPickle as pickle
+            with open('wordvectors/wordvectors.'+str(self.wvecDim)+'d.bin','r') as fid:
+                print "Loading from pretrained wordvectors"
+                self.L = pickle.load(fid)
+        else:       
+            self.L = 0.01*np.random.randn(self.wvecDim,self.numWords)
 
         # Hidden activation weights for layer 1
         self.W1 = 0.01*np.random.randn(self.wvecDim,2*self.wvecDim+1)
