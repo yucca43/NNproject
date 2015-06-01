@@ -5,6 +5,7 @@ import sgd as optimizer
 from rntn import RNTN
 from rnn_changed import RNN3
 from rnn2deep import RNN2
+from rnn2tanh import RNN2TANH
 from rnn import RNN
 #from dcnn import DCNN
 import tree as tr
@@ -80,6 +81,8 @@ def run(args=None):
         nn = RNN(opts.wvecDim,opts.outputDim,opts.numWords,opts.minibatch)
     elif(opts.model=='RNN2'):
         nn = RNN2(opts.wvecDim,opts.middleDim,opts.outputDim,opts.numWords,opts.minibatch)
+    elif(opts.model=='RNN2TANH'):
+        nn = RNN2(opts.wvecDim,opts.middleDim,opts.outputDim,opts.numWords,opts.minibatch)
     elif(opts.model=='RNN3'):
         nn = RNN3(opts.wvecDim,opts.middleDim,opts.outputDim,opts.numWords,opts.minibatch)
     elif(opts.model=='DCNN'):
@@ -140,9 +143,10 @@ def test(netFile,dataSet, model='RNN', trees=None):
             nn = RNTN(opts.wvecDim,opts.outputDim,opts.numWords,opts.minibatch)
         elif(model=='RNN'):
             nn = RNN(opts.wvecDim,opts.outputDim,opts.numWords,opts.minibatch)
-            
         elif(model=='RNN2'):
             nn = RNN2(opts.wvecDim,opts.middleDim,opts.outputDim,opts.numWords,opts.minibatch)
+        elif(model=='RNN2TANH'):
+            nn = RNN2TANH(opts.wvecDim,opts.middleDim,opts.outputDim,opts.numWords,opts.minibatch)
         elif(model=='RNN3'):
             nn = RNN3(opts.wvecDim,opts.middleDim,opts.outputDim,opts.numWords,opts.minibatch)
         elif(model=='DCNN'):

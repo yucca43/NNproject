@@ -120,52 +120,65 @@ class RNN2:
             # do nothing?
             node.hActs1 = self.L[:,node.word]
         else:
-            Lcost,Ltotal = self.forwardProp(node.left,correct,guess)  
-            Rcost,Rtotal = self.forwardProp(node.right,correct,guess) 
-            total = Ltotal + Rtotal
-            cost = Lcost + Rcost
-            # Hidden Activation 1
-            node.hActs1 = np.dot(self.W1, np.hstack([node.left.hActs1, node.right.hActs1])) + self.b1
-            # ReLu
-            node.hActs1[node.hActs1<0] = 0;
+            if node.right is not None:
+                Lcost,Ltotal = self.forwardProp(node.left,correct,guess)  
+                Rcost,Rtotal = self.forwardProp(node.right,correct,guess) 
+                total = Ltotal + Rtotal
+                cost = Lcost + Rcost
+                # Hidden Activation 1
+                node.hActs1 = np.dot(self.W1, np.hstack([node.left.hActs1, node.right.hActs1])) + self.b1
+                # ReLu
+                node.hActs1[node.hActs1<0] = 0;
+            else:
+                self.forwardProp(node.left,correct,guess)
+                node.hActs1 = node.left.hActs1
+                # ReLu
+                node.hActs1[node.hActs1<0] = 0
+
 
         # Hidden Activation 2
         node.hActs2 = np.dot(self.W2, node.hActs1) + self.b2
         # ReLu 2
         node.hActs2[node.hActs2<0] = 0;
-        # softmax
-        node.probs = np.dot(self.Ws,node.hActs2) + self.bs
-        node.probs -= np.max(node.probs)
-        node.probs = np.exp(node.probs)
-        node.probs = node.probs/np.sum(node.probs)
 
-        cost -= np.log(node.probs[node.label])
-        correct.append(node.label)
-        guess.append(np.argmax(node.probs))
-        return cost, total + 1
+        if node.parent is None:
+            # softmax
+            node.probs = np.dot(self.Ws,node.hActs2) + self.bs
+            node.probs -= np.max(node.probs)
+            node.probs = np.exp(node.probs)
+            node.probs = node.probs/np.sum(node.probs)
+
+            cost -= np.log(node.probs[node.label])
+            correct.append(node.label)
+            guess.append(np.argmax(node.probs))
+            return cost, total + 1
+        return 0,total
 
     def backProp(self,node,error=None):
-
+        if not node.isLeaf and node.right is None:
+            self.backProp(node.left, error)
+            return
         # Clear nodes
         node.fprop = False
-
+        deltas = 0
+        if node.parent is None:
         # this is exactly the same setup as backProp in rnn.py
         # delta 3
-        deltas = node.probs
-        deltas[node.label] -= 1.0
-        # U and bs
-        self.dWs += np.outer(deltas,node.hActs2)
-        self.dbs += deltas
+            deltas = node.probs
+            deltas[node.label] -= 1.0
+            # U and bs
+            self.dWs += np.outer(deltas,node.hActs2)
+            self.dbs += deltas
 
-        # delta_2^(2)
-        deltas = np.dot(self.Ws.T, deltas)
-        deltas *= (node.hActs2 != 0)
-        # W2 and b2
-        self.dW2 += np.outer(deltas,node.hActs1)
-        self.db2 += deltas
+            # delta_2^(2)
+            deltas = np.dot(self.Ws.T, deltas)
+            deltas *= (node.hActs2 != 0)
+            # W2 and b2
+            self.dW2 += np.outer(deltas,node.hActs1)
+            self.db2 += deltas
 
-        # delta_2^(1) w/0 ReLu
-        deltas = np.dot(self.W2.T, deltas)
+            # delta_2^(1) w/0 ReLu
+            deltas = np.dot(self.W2.T, deltas)
 
         if error is not None:
             deltas += error

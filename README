@@ -30,14 +30,15 @@ Done:
 
 2. Seperated train data into 4874 train and 1218 dev
 
+3. change activation from relu to tanh didn't work..rnn2tanh
+
+4. Run rntn.. struggling...
+
 
 Possible further improvement
--Run rntn
-- change activation from relu to tanh
 -preprocess twitter data & use pretrained word vectors
 Question: preprocess before parsing or after parsing?
 -incorporate task A data
--
 -Run it on sentiment140?
 
 

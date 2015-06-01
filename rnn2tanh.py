@@ -1,13 +1,22 @@
 import numpy as np
 import collections
-import sys
-np.seterr(over='raise',under='raise')
+import pdb
 
-class RNTN:
 
-    def __init__(self,wvecDim,outputDim,numWords,mbSize=30,rho=1e-6):
+# This is a 2-Layer Deep Recursive Neural Netowrk with two tanh Layers and a softmax layer
+# You must update the forward and backward propogation functions of this file.
+
+# You can run this file via 'python rnn2deep.py' to perform a gradient check
+
+# tip: insert pdb.set_trace() in places where you are unsure whats going on
+
+
+class RNN2TANH:
+
+    def __init__(self,wvecDim, middleDim, outputDim,numWords,mbSize=30,rho=1e-4):
         self.wvecDim = wvecDim
         self.outputDim = outputDim
+        self.middleDim = middleDim
         self.numWords = numWords
         self.mbSize = mbSize
         self.defaultVec = lambda : np.zeros((wvecDim,))
@@ -15,25 +24,31 @@ class RNTN:
 
     def initParams(self):
         np.random.seed(12341)
-        
+
         # Word vectors
         self.L = 0.01*np.random.randn(self.wvecDim,self.numWords)
 
-        # Hidden activation weights
-        self.V = 0.01*np.random.randn(self.wvecDim,2*self.wvecDim,2*self.wvecDim)
-        self.W = 0.01*np.random.randn(self.wvecDim,self.wvecDim*2)
-        self.b = np.zeros((self.wvecDim))
+        # Hidden activation weights for layer 1
+        self.W1 = 0.01*np.random.randn(self.wvecDim,2*self.wvecDim)
+        self.b1 = np.zeros((self.wvecDim))
+
+        # Hidden activation weights for layer 2
+        self.W2 = 0.01*np.random.randn(self.middleDim,self.wvecDim)
+        self.b2 = np.zeros((self.middleDim))
 
         # Softmax weights
-        self.Ws = 0.01*np.random.randn(self.outputDim,self.wvecDim)
+        self.Ws = 0.01*np.random.randn(self.outputDim,self.middleDim) # note this is " U " in the notes and the handout.. there is a reason for the change in notation
         self.bs = np.zeros((self.outputDim))
 
-        self.stack = [self.L, self.V, self.W, self.b, self.Ws, self.bs]
+        self.stack = [self.L, self.W1, self.b1, self.W2, self.b2, self.Ws, self.bs]
 
         # Gradients
-        self.dV = np.empty((self.wvecDim,2*self.wvecDim,2*self.wvecDim))
-        self.dW = np.empty(self.W.shape)
-        self.db = np.empty((self.wvecDim))
+        self.dW1 = np.empty(self.W1.shape)
+        self.db1 = np.empty((self.wvecDim))
+        
+        self.dW2 = np.empty(self.W2.shape)
+        self.db2 = np.empty((self.middleDim))
+
         self.dWs = np.empty(self.Ws.shape)
         self.dbs = np.empty((self.outputDim))
 
@@ -44,26 +59,26 @@ class RNTN:
         Backprop each tree.
         Returns
            cost
-           Gradient w.r.t. W, Ws, b, bs
+           Gradient w.r.t. W1, W2, Ws, b1, b2, bs
            Gradient w.r.t. L in sparse form.
 
         or if in test mode
         Returns 
            cost, correctArray, guessArray, total
-           
         """
         cost = 0.0
         correct = []
         guess = []
         total = 0.0
 
-        self.L, self.V, self.W, self.b, self.Ws, self.bs = self.stack
-        # self.L,self.W,self.b,self.Ws,self.bs = self.stack
-
+        self.L, self.W1, self.b1, self.W2, self.b2, self.Ws, self.bs = self.stack
         # Zero gradients
-        self.dV[:] = 0
-        self.dW[:] = 0
-        self.db[:] = 0
+        self.dW1[:] = 0
+        self.db1[:] = 0
+        
+        self.dW2[:] = 0
+        self.db2[:] = 0
+
         self.dWs[:] = 0
         self.dbs[:] = 0
         self.dL = collections.defaultdict(self.defaultVec)
@@ -73,8 +88,9 @@ class RNTN:
             c,tot = self.forwardProp(tree.root,correct,guess)
             cost += c
             total += tot
+            
         if test:
-            return (1./len(mbdata))*cost,correct,guess,total
+            return (1./len(mbdata))*cost,correct, guess, total
 
         # Back prop each tree in minibatch
         for tree in mbdata:
@@ -86,18 +102,18 @@ class RNTN:
             v *=scale
         
         # Add L2 Regularization 
-        cost += (self.rho/2)*np.sum(self.V ** 2)
-        cost += (self.rho/2)*np.sum(self.W**2)
+        cost += (self.rho/2)*np.sum(self.W1**2)
+        cost += (self.rho/2)*np.sum(self.W2**2)
         cost += (self.rho/2)*np.sum(self.Ws**2)
-        # cost,,,
-        return scale*cost,[self.dL,scale*(self.dV+self.rho*self.V),scale*(self.dW + self.rho*self.W),scale*self.db,
-                           scale*(self.dWs+self.rho*self.Ws),scale*self.dbs]
 
+        return scale*cost,[self.dL,scale*(self.dW1 + self.rho*self.W1),scale*self.db1,
+                                   scale*(self.dW2 + self.rho*self.W2),scale*self.db2,
+                                   scale*(self.dWs+self.rho*self.Ws),scale*self.dbs]
 
-    def forwardProp(self,node,correct=[], guess=[]):
-        node.fprop = True
-        cost  =  total = 0.0 # cost should be a running number and total is the total examples we have seen used in accuracy reporting later
-
+    def forwardProp(self,node, correct=[], guess=[]):
+        cost  =  total = 0.0
+        # this is exactly the same setup as forwardProp in rnn.py
+        
         if(node.isLeaf):
         # if(node.left is None or node.right is None):
             # assert node.left is None and node.right is None
@@ -109,28 +125,34 @@ class RNTN:
                 Rcost,Rtotal = self.forwardProp(node.right,correct,guess) 
                 total = Ltotal + Rtotal
                 cost = Lcost + Rcost
-                # Hidden Activation
-                h_combined = np.hstack([node.left.hActs1, node.right.hActs1])
-                node.hActs1 = np.dot(h_combined,self.V).dot(h_combined) + np.dot(self.W, h_combined) + self.b
+                # Hidden Activation 1
+                node.hActs1 = np.dot(self.W1, np.hstack([node.left.hActs1, node.right.hActs1])) + self.b1
                 # tanh
-                node.hActs1 = np.tanh(node.hActs1)
+                node.hActs1 = -np.tanh(node.hActs1)
             else:
                 self.forwardProp(node.left,correct,guess)
                 node.hActs1 = node.left.hActs1
-                # ReLu
-                node.hActs1[node.hActs1<0] = 0
+                # tanh
+                node.hActs1 = -np.tanh(node.hActs1)
+
+
+        # Hidden Activation 2
+        node.hActs2 = np.dot(self.W2, node.hActs1) + self.b2
+        # tanh 2
+        node.hActs2 = -np.tanh(node.hActs2)
+
         if node.parent is None:
             # softmax
-            node.probs = np.dot(self.Ws,node.hActs1) + self.bs
+            node.probs = np.dot(self.Ws,node.hActs2) + self.bs
             node.probs -= np.max(node.probs)
             node.probs = np.exp(node.probs)
             node.probs = node.probs/np.sum(node.probs)
+
             cost -= np.log(node.probs[node.label])
             correct.append(node.label)
             guess.append(np.argmax(node.probs))
             return cost, total + 1
         return 0,total
-
 
     def backProp(self,node,error=None):
         if not node.isLeaf and node.right is None:
@@ -139,40 +161,43 @@ class RNTN:
         # Clear nodes
         node.fprop = False
         deltas = 0
-
         if node.parent is None:
-            # delta 3
+        # this is exactly the same setup as backProp in rnn.py
+        # delta 3
             deltas = node.probs
             deltas[node.label] -= 1.0
-            # U and b
-            self.dWs += np.outer(deltas,node.hActs1)
+            # U and bs
+            self.dWs += np.outer(deltas,node.hActs2)
             self.dbs += deltas
-            # delta_2^(1) w/0 relu'
+
+            # delta_2^(2)
             deltas = np.dot(self.Ws.T, deltas)
+            deltas *= (node.hActs2 != 0)
+            # W2 and b2
+            self.dW2 += np.outer(deltas,node.hActs1)
+            self.db2 += deltas
+
+            # delta_2^(1) w/0 tanh
+            tanhx = -np.tanh(node.hActs1)
+            deltas *= (-tanhx*tanhx +1)
 
         if error is not None:
             deltas += error
 
-        # delta_2^(1)
-        # tanh
-        tanhx = -np.tanh(node.hActs1)
-        deltas *= (-tanhx*tanhx +1)
+        deltas *= (node.hActs1 != 0)
 
         if node.isLeaf:
             self.dL[node.word] += deltas
             return
 
         if not node.isLeaf:
-            h_combined = np.hstack([node.left.hActs1, node.right.hActs1])
-            hh = np.outer(h_combined, h_combined)
-            self.dV += np.dstack([d*hh for d in deltas]).T
-            self.dW += np.outer(deltas,h_combined)
-            self.db += deltas
-            S = sum([(delta*(v+v.T)).dot(h_combined) for delta,v in zip(deltas,self.V)])
-            deltas = np.dot(self.W.T, deltas)+S
+            self.dW1 += np.outer(deltas,np.hstack([node.left.hActs1, node.right.hActs1]))
+            self.db1 += deltas
+            deltas = np.dot(self.W1.T, deltas)
             self.backProp(node.left, deltas[:self.wvecDim])
             self.backProp(node.right, deltas[self.wvecDim:])
-      
+       
+        
 
         
     def updateParams(self,scale,update,log=False):
@@ -206,31 +231,26 @@ class RNTN:
     def check_grad(self,data,epsilon=1e-6):
 
         cost, grad = self.costAndGrad(data)
+
         err1 = 0.0
         count = 0.0
-
-        print "Checking dW... (might take a while)"
-        # for W,dW in zip(self.stack[1:],grad[1:]):
-        for iii,(W,dW) in enumerate(zip(self.stack[1:],grad[1:])):
-            W = W[...,None,None] # add dimension since bias is flat
-            dW = dW[...,None,None] 
+        print "Checking dWs, dW1 and dW2..."
+        for W,dW in zip(self.stack[1:],grad[1:]):
+            W = W[...,None] # add dimension since bias is flat
+            dW = dW[...,None] 
             for i in xrange(W.shape[0]):
                 for j in xrange(W.shape[1]):
-                    for k in xrange(W.shape[2]):
-                        W[i,j,k] += epsilon
-                        costP,_ = self.costAndGrad(data)
-                        W[i,j,k] -= epsilon
-                        numGrad = (costP - cost)/epsilon
-                        err = np.abs(dW[i,j,k] - numGrad)
-                        # print "Analytic %.9f, Numerical %.9f, Relative Error %.9f"%(dW[i,j,k],numGrad,err)
-                        err1+=err
-                        count+=1
+                    W[i,j] += epsilon
+                    costP,_ = self.costAndGrad(data)
+                    W[i,j] -= epsilon
+                    numGrad = (costP - cost)/epsilon
+                    err = np.abs(dW[i,j] - numGrad)
+                    err1+=err
+                    count+=1
         if 0.001 > err1/count:
             print "Grad Check Passed for dW"
         else:
-            print "err1: ",err1
             print "Grad Check Failed for dW: Sum of Error = %.9f" % (err1/count)
-
         # check dL separately since dict
         dL = grad[0]
         L = self.stack[0]
@@ -244,7 +264,6 @@ class RNTN:
                 L[i,j] -= epsilon
                 numGrad = (costP - cost)/epsilon
                 err = np.abs(dL[j][i] - numGrad)
-                #print "Analytic %.9f, Numerical %.9f, Relative Error %.9f"%(dL[j][i],numGrad,err)
                 err2+=err
                 count+=1
 
@@ -260,16 +279,16 @@ if __name__ == '__main__':
     numW = len(treeM.loadWordMap())
 
     wvecDim = 10
+    middleDim = 10
     outputDim = 5
 
-    nn = RNTN(wvecDim,outputDim,numW,mbSize=4)
-    nn.initParams()
+    rnn = RNN2TANH(wvecDim,middleDim,outputDim,numW,mbSize=4)
+    rnn.initParams()
 
-    mbData = train[:1]
-    #cost, grad = nn.costAndGrad(mbData)
-
+    mbData = train[:4]
+    
     print "Numerical gradient check..."
-    nn.check_grad(mbData)
+    rnn.check_grad(mbData)
 
 
 

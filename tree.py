@@ -152,7 +152,20 @@ def loadTrees(dataSet='train'):
     for tree in trees:
         leftTraverse(tree.root,nodeFn=mapWords,args=wordMap)
     return trees
-      
+  
+def buildPretrainWV(dataSet='train'):
+    """
+    Loads training trees. Maps leaf node words to word ids.
+    """
+    wordMap = loadWordMap()
+    file = 'trees/%s.txt'%dataSet
+    print "Loading %sing trees.."%dataSet
+    with open(file,'r') as fid:
+        trees = [Tree(l) for l in fid.readlines()]
+    for tree in trees:
+        leftTraverse(tree.root,nodeFn=mapWords,args=wordMap)
+    return trees
+
 if __name__=='__main__':
     buildWordMap()
     
