@@ -17,9 +17,29 @@ Preprocess Twitter data
 Glove pretrained word vectors?
 
 
-TODO:
-combine data to the form of hw3
-
-
 Installing jpype:
 export JAVA_HOME="/usr/lib/jvm/java-1.6.0-openjdk-1.6.0.0.x86_64/"
+
+
+Naive RNN
+	binarized, but possible to have only left node
+	also, Only have labels for sentence node
+
+Done:
+1. Built tree structure with Stanford Parser, used CollinsBinarization with careless NPCG
+
+2. Seperated train data into 4874 train and 1218 dev
+
+
+Possible further improvement
+-Run rntn
+- change activation from relu to tanh
+-preprocess twitter data & use pretrained word vectors
+Question: preprocess before parsing or after parsing?
+-incorporate task A data
+-
+-Run it on sentiment140?
+
+
+Everytime you get new train/dev trees:
+	first, build new wordmap by doing python tree.py

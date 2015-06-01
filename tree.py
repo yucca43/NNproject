@@ -28,14 +28,14 @@ class Tree:
         # for toks in treeString.strip().split():
         #     tokens += list(toks)
         # self.root = self.parse(tokens)
-        print "*********"
-        print treeString
+        # print "*********"
+        # print treeString
         self.root = self.parse(treeString.strip().split())
 
     def parse(self,tokens, parent=None):
-        print "---------"
-        print tokens
-        print ''.join(tokens)
+        # print "---------"
+        # print tokens
+        # print ''.join(tokens)
         if len(tokens)<=0:
             return None
         assert tokens[0][0] == '(', "Malformed tree"
@@ -55,10 +55,10 @@ class Tree:
                     countClose += 1
             split += 1 
         # New node
-        print "tokens len ", len(tokens)
-        print "split ", split
-        if split<len(tokens):
-            print "tokens[split]",tokens[split]
+        # print "tokens len ", len(tokens)
+        # print "split ", split
+        # if split<len(tokens):
+        #     print "tokens[split]",tokens[split]
         if parent is None:
             # The root!
             node = Node(int(tokens[0][1])) # zero index labels

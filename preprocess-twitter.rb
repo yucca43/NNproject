@@ -45,9 +45,9 @@ def tokenize input
 	return input.downcase
 end
 
-filename = "tweeti.b.dev"
-CSV.open("#{filename}.preprocessed", "wb", :col_sep=>"\t",quote_char:"\x00") do |csv|
-	CSV.foreach(filename ,{ :encoding=>"ISO8859-1", :col_sep=>"\t",quote_char:"\x00"}) do |row|
+filename = "data/b.dev"
+CSV.open("#{filename}.preprocessed.utf8", "wb", :col_sep=>"\t",quote_char:"\x00") do |csv|
+	CSV.foreach(filename ,{ :encoding=>"utf-8", :col_sep=>"\t",quote_char:"\x00"}) do |row|
 		puts row[3]
 		row[3] = tokenize row[3]
 		csv << row
