@@ -5,7 +5,7 @@ np.seterr(over='raise',under='raise')
 
 class RNTN:
 
-    def __init__(self,wvecDim,outputDim,numWords,mbSize=30,pretrain=False,rho=1e-6):
+    def __init__(self,wvecDim,outputDim,numWords,mbSize=30,pretrain=False,dropout=False,rho=1e-6):
         self.wvecDim = wvecDim
         self.outputDim = outputDim
         self.numWords = numWords
@@ -13,9 +13,9 @@ class RNTN:
         self.defaultVec = lambda : np.zeros((wvecDim,))
         self.rho = rho
         self.pretrain = pretrain
+        self.dropout = dropout
 
     def initParams(self):
-        np.random.seed(12341)
         
         # Word vectors
         if self.pretrain:
@@ -76,12 +76,18 @@ class RNTN:
         self.dL = collections.defaultdict(self.defaultVec)
 
         # Forward prop each tree in minibatch
-        for tree in mbdata: 
-            c,tot = self.forwardProp(tree.root,correct,guess)
-            cost += c
-            total += tot
         if test:
-            return (1./len(mbdata))*cost,correct,guess,total
+            for tree in mbdata: 
+                c,tot = self.forwardProp(tree.root,correct,guess,True)
+                cost += c
+                total += tot
+            return (1./len(mbdata))*cost,correct, guess, total
+        else:
+            # Forward prop each tree in minibatch
+            for tree in mbdata: 
+                c,tot = self.forwardProp(tree.root,correct,guess)
+                cost += c
+                total += tot
 
         # Back prop each tree in minibatch
         for tree in mbdata:
@@ -101,7 +107,7 @@ class RNTN:
                            scale*(self.dWs+self.rho*self.Ws),scale*self.dbs]
 
 
-    def forwardProp(self,node,correct=[], guess=[]):
+    def forwardProp(self,node,correct=[], guess=[],testTime=False):
         node.fprop = True
         cost  =  total = 0.0 # cost should be a running number and total is the total examples we have seen used in accuracy reporting later
 
@@ -128,7 +134,17 @@ class RNTN:
                 node.hActs1[node.hActs1<0] = 0
         if node.parent is None:
             # softmax
-            node.probs = np.dot(self.Ws,node.hActs1) + self.bs
+            if self.dropout:
+                if testTime:
+                    node.probs = (np.dot(self.Ws,node.hActs1) + self.bs)*0.5
+                else:
+                    #dropouts
+                    nums = np.random.random(node.hActs1.shape)
+                    node.mask = nums>0.5
+                    h1 = node.hActs1*node.mask
+                    node.probs = np.dot(self.Ws,h1) + self.bs
+            else:
+                node.probs = np.dot(self.Ws,node.hActs1) + self.bs
             node.probs -= np.max(node.probs)
             node.probs = np.exp(node.probs)
             node.probs = node.probs/np.sum(node.probs)
@@ -152,7 +168,11 @@ class RNTN:
             deltas = node.probs
             deltas[node.label] -= 1.0
             # U and b
-            self.dWs += np.outer(deltas,node.hActs1)
+            if self.dropout:
+                h1 =  node.hActs1*node.mask
+                self.dWs += np.outer(deltas,h1)
+            else:
+                self.dWs += np.outer(deltas,node.hActs1)
             self.dbs += deltas
             # delta_2^(1) w/0 relu'
             deltas = np.dot(self.Ws.T, deltas)

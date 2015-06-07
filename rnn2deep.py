@@ -13,7 +13,7 @@ import pdb
 
 class RNN2:
 
-    def __init__(self,wvecDim, middleDim, outputDim,numWords,mbSize=30,pretrain=False,rho=1e-4):
+    def __init__(self,wvecDim, middleDim, outputDim,numWords,mbSize=30,pretrain=False,dropout=False,rho=1e-4):
         self.wvecDim = wvecDim
         self.outputDim = outputDim
         self.middleDim = middleDim
@@ -22,9 +22,9 @@ class RNN2:
         self.defaultVec = lambda : np.zeros((wvecDim,))
         self.rho = rho
         self.pretrain = pretrain
+        self.dropout = dropout
 
     def initParams(self):
-        np.random.seed(12341)
 
         # Word vectors
         if self.pretrain:
@@ -73,6 +73,7 @@ class RNN2:
         Returns 
            cost, correctArray, guessArray, total
         """
+
         cost = 0.0
         correct = []
         guess = []
@@ -90,14 +91,19 @@ class RNN2:
         self.dbs[:] = 0
         self.dL = collections.defaultdict(self.defaultVec)
 
-        # Forward prop each tree in minibatch
-        for tree in mbdata: 
-            c,tot = self.forwardProp(tree.root,correct,guess)
-            cost += c
-            total += tot
-            
         if test:
+            for tree in mbdata: 
+                c,tot = self.forwardProp(tree.root,correct,guess,True)
+                cost += c
+                total += tot
             return (1./len(mbdata))*cost,correct, guess, total
+        else:
+            # Forward prop each tree in minibatch
+            for tree in mbdata: 
+                c,tot = self.forwardProp(tree.root,correct,guess)
+                cost += c
+                total += tot
+
 
         # Back prop each tree in minibatch
         for tree in mbdata:
@@ -117,7 +123,7 @@ class RNN2:
                                    scale*(self.dW2 + self.rho*self.W2),scale*self.db2,
                                    scale*(self.dWs+self.rho*self.Ws),scale*self.dbs]
 
-    def forwardProp(self,node, correct=[], guess=[]):
+    def forwardProp(self,node, correct=[], guess=[],testTime=False):
         cost  =  total = 0.0
         # this is exactly the same setup as forwardProp in rnn.py
         
@@ -150,7 +156,17 @@ class RNN2:
 
         if node.parent is None:
             # softmax
-            node.probs = np.dot(self.Ws,node.hActs2) + self.bs
+            if self.dropout:
+                if testTime:
+                    node.probs = (np.dot(self.Ws,node.hActs2) + self.bs)*0.5
+                else:
+                    #dropouts
+                    nums = np.random.random(node.hActs2.shape)
+                    node.mask = nums>0.5
+                    h2 = node.hActs2*node.mask
+                    node.probs = np.dot(self.Ws,h2) + self.bs
+            else:
+                node.probs = np.dot(self.Ws,node.hActs2) + self.bs
             node.probs -= np.max(node.probs)
             node.probs = np.exp(node.probs)
             node.probs = node.probs/np.sum(node.probs)
@@ -174,7 +190,11 @@ class RNN2:
             deltas = node.probs
             deltas[node.label] -= 1.0
             # U and bs
-            self.dWs += np.outer(deltas,node.hActs2)
+            if self.dropout:
+                h2 = node.hActs2*node.mask
+                self.dWs += np.outer(deltas,h2)
+            else:
+                self.dWs += np.outer(deltas,node.hActs2)
             self.dbs += deltas
 
             # delta_2^(2)

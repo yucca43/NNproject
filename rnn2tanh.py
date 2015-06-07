@@ -13,7 +13,7 @@ import pdb
 
 class RNN2TANH:
 
-    def __init__(self,wvecDim, middleDim, outputDim,numWords,mbSize=30,pretrain=False,rho=1e-4):
+    def __init__(self,wvecDim, middleDim, outputDim,numWords,mbSize=30,pretrain=False,dropout=False,rho=1e-4):
         self.wvecDim = wvecDim
         self.outputDim = outputDim
         self.middleDim = middleDim
@@ -22,9 +22,9 @@ class RNN2TANH:
         self.defaultVec = lambda : np.zeros((wvecDim,))
         self.rho = rho
         self.pretrain = pretrain
+        self.dropout = dropout
 
     def initParams(self):
-        np.random.seed(12341)
 
         # Word vectors
         if self.pretrain:

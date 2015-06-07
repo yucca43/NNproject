@@ -9,7 +9,7 @@ import collections
 # tip: insert pdb.set_trace() in places where you are unsure whats going on
 
 class RNN:
-    def __init__(self,wvecDim,outputDim,numWords,mbSize=30,pretrain=False,rho=1e-4):
+    def __init__(self,wvecDim,outputDim,numWords,mbSize=30,pretrain=False,dropout=False,rho=1e-4):
         self.wvecDim = wvecDim
         self.outputDim = outputDim
         self.numWords = numWords
@@ -17,9 +17,9 @@ class RNN:
         self.defaultVec = lambda : np.zeros((wvecDim,))
         self.rho = rho
         self.pretrain = pretrain
+        self.dropout = dropout
 
     def initParams(self):
-        np.random.seed(12341)
 
         # Word vectors
         if self.pretrain:
@@ -76,12 +76,18 @@ class RNN:
         self.dL = collections.defaultdict(self.defaultVec)
 
         # Forward prop each tree in minibatch
-        for tree in mbdata: 
-            c,tot = self.forwardProp(tree.root,correct,guess)
-            cost += c
-            total += tot
         if test:
-            return (1./len(mbdata))*cost,correct,guess,total
+            for tree in mbdata: 
+                c,tot = self.forwardProp(tree.root,correct,guess,True)
+                cost += c
+                total += tot
+            return (1./len(mbdata))*cost,correct, guess, total
+        else:
+            # Forward prop each tree in minibatch
+            for tree in mbdata: 
+                c,tot = self.forwardProp(tree.root,correct,guess)
+                cost += c
+                total += tot
 
         # Back prop each tree in minibatch
         for tree in mbdata:
@@ -99,7 +105,7 @@ class RNN:
         return scale*cost,[self.dL,scale*(self.dW + self.rho*self.W),scale*self.db,
                            scale*(self.dWs+self.rho*self.Ws),scale*self.dbs]
 
-    def forwardProp(self,node,correct=[], guess=[]):
+    def forwardProp(self,node,correct=[], guess=[],testTime=False):
         node.fprop = True
         cost  =  total = 0.0 # cost should be a running number and total is the total examples we have seen used in accuracy reporting later
 
@@ -127,10 +133,25 @@ class RNN:
         # root node
         if node.parent is None:
             # softmax
-            node.probs = np.dot(self.Ws,node.hActs1) + self.bs
-            node.probs -= np.max(node.probs)
-            node.probs = np.exp(node.probs)
-            node.probs = node.probs/np.sum(node.probs)
+            # dropout on softmax level
+            if self.dropout:
+                if testTime:
+                    node.probs = (np.dot(self.Ws,node.hActs1) + self.bs)*0.5
+                else:
+                    nums = np.random.random(node.hActs1.shape)
+                    node.mask = nums>0.5
+                    h1 = node.hActs1*node.mask 
+                    node.probs = np.dot(self.Ws,h1) + self.bs  
+            else:
+                node.probs = np.dot(self.Ws,node.hActs1) + self.bs
+            saveprobs = node.probs
+            try:
+                node.probs -= np.max(node.probs)
+                node.probs = np.exp(node.probs)
+                node.probs = node.probs/np.sum(node.probs)
+            except:
+                node.probs = np.exp(saveprobs)
+                node.probs = node.probs/np.sum(node.probs)
             cost -= np.log(node.probs[node.label])
             correct.append(node.label)
             guess.append(np.argmax(node.probs))
@@ -154,7 +175,11 @@ class RNN:
             deltas = node.probs
             deltas[node.label] -= 1.0
             # U and b
-            self.dWs += np.outer(deltas,node.hActs1)
+            if self.dropout:
+                h1 = node.hActs1*node.mask
+                self.dWs += np.outer(deltas,h1)
+            else:
+                self.dWs += np.outer(deltas,node.hActs1)
             self.dbs += deltas
             # delta_2^(1) w/0 relu'
             deltas = np.dot(self.Ws.T, deltas)

@@ -167,15 +167,28 @@ def buildPretrainWV(wvecDim=25):
     numWords = len(wordMap)
     L = 0.01*np.random.randn(wvecDim,numWords)
     miss = []
+
+    for word in wordMap:
+        if word not in pertrainWordDict:
+            miss.append(word)
+
+    for m in miss:
+        del wordMap[m]
+
+    wordMap = dict(zip(wordMap.iterkeys(),xrange(len(wordMap))))
+    wordMap[UNK] = len(wordMap) # Add unknown as word
+    miss=[]
     for word in wordMap:
         if word in pertrainWordDict:
             WVindex = pertrainWordDict[word]
             L[:,wordMap[word]] = pretrainVectors[WVindex]
         else:
             miss.append(word)
+    assert len(miss) ==0
 
-    print "Missed ",len(miss)
-            
+    print "Saving wordMap to wordMap.bin"
+    with open('wordMap.bin','w') as fid:
+        pickle.dump(wordMap,fid)            
     print "Saving wordvectors to wordvectors.bin"
     with open('wordvectors/wordvectors.'+str(wvecDim)+'d.bin','w') as fid:
         pickle.dump(L,fid)
@@ -183,7 +196,7 @@ def buildPretrainWV(wvecDim=25):
 
 if __name__=='__main__':
     buildWordMap()
-    
+    buildPretrainWV()
     train = loadTrees()
 
     print "Now you can do something with this list of trees!"

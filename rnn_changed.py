@@ -14,6 +14,7 @@ class RNN3:
         self.mbSize = mbSize
         self.defaultVec = lambda : np.zeros((wvecDim,))
         self.rho = rho
+        self.pretrain = pretrain
 
     def initParams(self):
         np.random.seed(12341)
